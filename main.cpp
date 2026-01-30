@@ -1,5 +1,9 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <fstream>
+#include <ctime>
+#include <cstdlib>
 
 using namespace std;
 
@@ -9,7 +13,23 @@ string GRAY_BG = "\033[47;30m";
 string RESET = "\033[0m";         
 
 int main() {
-    string target = "APPLE"; 
+    vector<string> vocabulary;
+    string word_from_file;
+    ifstream file("word.txt");
+
+    if (file.is_open()) {
+        while (file >> word_from_file) {
+            vocabulary.push_back(word_from_file);
+        }
+        file.close();
+    } else {
+        cout << "Error: Could not open word.txt" << endl;
+        return 1;
+    }
+
+    srand(time(0));
+    string target = vocabulary[rand() % vocabulary.size()];
+
     string guess;
     int tries = 0;
 
@@ -29,29 +49,37 @@ int main() {
             string bg;
             char c = toupper(guess[i]);
 
-            if (guess[i] == target[i]) {
+            if (guess[i] == (char)tolower(target[i]) || guess[i] == (char)toupper(target[i])) {
+                if (toupper(guess[i]) == toupper(target[i])) {
+                    bg = (i < 5 && toupper(guess[i]) == toupper(target[i])) ? GREEN_BG : GRAY_BG;
+                }
+            }
+            
+            if (toupper(guess[i]) == toupper(target[i])) {
                 bg = GREEN_BG;
             } else {
                 bool found = false;
                 for (int j = 0; j < 5; j++) {
-                    if (guess[i] == target[j]) found = true;
+                    if (toupper(guess[i]) == toupper(target[j])) found = true;
                 }
                 bg = found ? YELLOW_BG : GRAY_BG;
             }
-            
             cout << bg << " " << c << " " << RESET << "  ";
         }
         cout << endl;
 
         if (guess == target) {
-            cout << "\nCONGRATULATIONS! You guessed it!" << endl;
+           cout << "\n==============================" << endl;
+        cout << "* CONGRATULATIONS! YOU WON! *" << endl;
+        cout << "==============================" << endl;
             break;
         }
         tries++;
     }
 
     if (tries == 6 && guess != target) {
-        cout << "\nGAME OVER! The word was: " << target << endl;
+       cout << "\n[!] GAME OVER [!]" << endl;
+        cout << "The secret word was: " << target << endl;
     }
 
     return 0;
