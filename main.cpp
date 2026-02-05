@@ -44,17 +44,31 @@ int main() {
             continue;
         }
 
+        bool isValidWord = false;
+        for (string w : vocabulary) {
+            string tempGuess = guess;
+            string tempW = w;
+            for(int k=0; k<5; k++) {
+                tempGuess[k] = toupper(tempGuess[k]);
+                tempW[k] = toupper(tempW[k]);
+            }
+            if (tempGuess == tempW) {
+                isValidWord = true;
+                break;
+            }
+        }
+
+        if (!isValidWord) {
+            cout << "(!) Not in word list. Try again!" << endl;
+            continue;
+        }
+        // -------------------------------------------------------
+
         cout << "\n    "; 
         for (int i = 0; i < 5; i++) {
             string bg;
             char c = toupper(guess[i]);
 
-            if (guess[i] == (char)tolower(target[i]) || guess[i] == (char)toupper(target[i])) {
-                if (toupper(guess[i]) == toupper(target[i])) {
-                    bg = (i < 5 && toupper(guess[i]) == toupper(target[i])) ? GREEN_BG : GRAY_BG;
-                }
-            }
-            
             if (toupper(guess[i]) == toupper(target[i])) {
                 bg = GREEN_BG;
             } else {
@@ -68,11 +82,18 @@ int main() {
         }
         cout << endl;
 
-        if (guess == target) {
+        string upperGuess = guess;
+        string upperTarget = target;
+        for(int k=0; k<5; k++) {
+            upperGuess[k] = toupper(upperGuess[k]);
+            upperTarget[k] = toupper(upperTarget[k]);
+        }
+
+        if (upperGuess == upperTarget) {
            cout << "\n==============================" << endl;
-        cout << "* CONGRATULATIONS! YOU WON! *" << endl;
-        cout << "==============================" << endl;
-            break;
+           cout << "* CONGRATULATIONS! YOU WON! *" << endl;
+           cout << "==============================" << endl;
+           break;
         }
         tries++;
     }
