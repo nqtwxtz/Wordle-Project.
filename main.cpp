@@ -1,107 +1,73 @@
-#include <iostream>
-#include <string>
+#include <SFML/Graphics.hpp>
 #include <vector>
+#include <string>
+#include <iostream>
 #include <fstream>
 #include <ctime>
-#include <cstdlib>
+#include <algorithm>
 
 using namespace std;
 
-string GREEN_BG = "\033[42;30m";  
-string YELLOW_BG = "\033[43;30m"; 
-string GRAY_BG = "\033[47;30m";   
-string RESET = "\033[0m";         
-
-int main() {
-    vector<string> vocabulary;
-    string word_from_file;
-    ifstream file("word.txt");
-
+string getRandomWord(string filename) {
+    vector<string> words;
+    ifstream file(filename);
+    string word;
     if (file.is_open()) {
-        while (file >> word_from_file) {
-            vocabulary.push_back(word_from_file);
+        while (file >> word) {
+            words.push_back(word);
         }
         file.close();
-    } else {
-        cout << "Error: Could not open word.txt" << endl;
-        return 1;
     }
-
+    if (words.empty()) return "SUPER";
+    
     srand(time(0));
-    string target = vocabulary[rand() % vocabulary.size()];
-
-    string guess;
-    int tries = 0;
-
-    cout << "--- Welcome to Wordle ---" << endl;
-
-    while (tries < 6) {
-        cout << "\n[" << tries + 1 << "/6] Enter your guess: ";
-        cin >> guess;
-
-        if (guess.length() != 5) {
-            cout << "(!) Please enter exactly 5 letters." << endl;
-            continue;
-        }
-
-        bool isValidWord = false;
-        for (string w : vocabulary) {
-            string tempGuess = guess;
-            string tempW = w;
-            for(int k=0; k<5; k++) {
-                tempGuess[k] = toupper(tempGuess[k]);
-                tempW[k] = toupper(tempW[k]);
-            }
-            if (tempGuess == tempW) {
-                isValidWord = true;
-                break;
-            }
-        }
-
-        if (!isValidWord) {
-            cout << "(!) Not in word list. Try again!" << endl;
-            continue;
-        }
-        // -------------------------------------------------------
-
-        cout << "\n    "; 
-        for (int i = 0; i < 5; i++) {
-            string bg;
-            char c = toupper(guess[i]);
-
-            if (toupper(guess[i]) == toupper(target[i])) {
-                bg = GREEN_BG;
-            } else {
-                bool found = false;
-                for (int j = 0; j < 5; j++) {
-                    if (toupper(guess[i]) == toupper(target[j])) found = true;
-                }
-                bg = found ? YELLOW_BG : GRAY_BG;
-            }
-            cout << bg << " " << c << " " << RESET << "  ";
-        }
-        cout << endl;
-
-        string upperGuess = guess;
-        string upperTarget = target;
-        for(int k=0; k<5; k++) {
-            upperGuess[k] = toupper(upperGuess[k]);
-            upperTarget[k] = toupper(upperTarget[k]);
-        }
-
-        if (upperGuess == upperTarget) {
-           cout << "\n==============================" << endl;
-           cout << "* CONGRATULATIONS! YOU WON! *" << endl;
-           cout << "==============================" << endl;
-           break;
-        }
-        tries++;
-    }
-
-    if (tries == 6 && guess != target) {
-       cout << "\n[!] GAME OVER [!]" << endl;
-        cout << "The secret word was: " << target << endl;
-    }
-
-    return 0;
+    int randomIndex = rand() % words.size();
+    string selected = words[randomIndex];
+    for (auto &c : selected) c = toupper(c);
+    return selected;
 }
+
+int main() {
+    sf::RenderWindow window(sf::VideoMode(450, 600), "C++ Wordle GUI");
+    window.setFramerateLimit(60);
+
+    sf::Font font;
+    if (!font.loadFromFile("ARIBLK.TTF")) return -1;
+
+    string targetWord = getRandomWord("word.txt");
+    string currentGuess = "";
+    vector<string> guesses;
+    int currentRow = 0;
+    bool gameOver = false;
+
+    vector<sf::RectangleShape> boxes;
+    for (int i = 0; i < 30; i++) {
+        sf::RectangleShape box(sf::Vector2f(60.f, 60.f));
+        box.setFillColor(sf::Color::White);
+        box.setOutlineThickness(2);
+        box.setOutlineColor(sf::Color(200, 200, 200));
+        box.setPosition(50.f + (i % 5) * 70, 50.f + (i / 5) * 70);
+        boxes.push_back(box);
+    }
+
+    while (window.isOpen()) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
+                window.close();
+
+            if (!gameOver && event.type == sf::Event::TextEntered) {
+                if (event.text.unicode < 128) {
+                    char entered = static_cast<char>(event.text.unicode);
+                    if (entered == 8 && !currentGuess.empty()) {
+                        currentGuess.pop_back();
+                    }
+                    else if (isalpha(entered) && currentGuess.length() < 5) {
+                        currentGuess += toupper(entered);
+                    }
+                    else if (entered == 13 && currentGuess.length() == 5) {
+                        for (int i = 0; i < 5; i++) {
+                            int boxIndex = currentRow * 5 + i;
+                            if (currentGuess[i] == targetWord[i]) {
+                                boxes[boxIndex].setFillColor(sf::Color(46, 204, 113));
+                            } else if (targetWord.find(currentGuess[i]) != string::n
