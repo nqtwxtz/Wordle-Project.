@@ -40,28 +40,41 @@ int main() {
     sf::Font font;
     if (!font.loadFromFile("ariblk.ttf")) return -1;
 
-    vector<string> dictionary = loadDictionary("word.txt");
-    string targetWord = getRandomWord(dictionary);
-
+    vector<string> dictionary;
+    string targetWord = "";
     string currentGuess = "";
     vector<string> guesses;
     int currentRow = 0;
     bool gameOver = false;
     bool invalidWord = false;
     
-    int menuState = 0; 
+    int menuState = 0; // 0: Mode, 1: Category, 2: Time, 3: Game
     bool challengeMode = false;
     float timeLimit = 0;
     sf::Clock gameClock;
 
+    // UI Buttons
     sf::RectangleShape btnPlay(sf::Vector2f(200, 60)), btnChallenge(sf::Vector2f(200, 60));
-    btnPlay.setPosition(125, 200); btnPlay.setFillColor(sf::Color(46, 204, 113));
-    btnChallenge.setPosition(125, 300); btnChallenge.setFillColor(sf::Color(231, 76, 60));
+    btnPlay.setPosition(125, 250); btnPlay.setFillColor(sf::Color(46, 204, 113));
+    btnChallenge.setPosition(125, 350); btnChallenge.setFillColor(sf::Color(231, 76, 60));
 
-    sf::RectangleShape btn60(sf::Vector2f(100, 50)), btn90(sf::Vector2f(100, 50)), btn120(sf::Vector2f(100, 50));
-    btn60.setPosition(175, 250); btn60.setFillColor(sf::Color(52, 152, 219));
-    btn90.setPosition(175, 330); btn90.setFillColor(sf::Color(52, 152, 219));
-    btn120.setPosition(175, 410); btn120.setFillColor(sf::Color(52, 152, 219));
+    sf::RectangleShape btnCat[4];
+    string catNames[] = {"ANIMALS", "FOOD", "ITEMS", "ALL"};
+    sf::Color catColors[] = {sf::Color(243, 156, 18), sf::Color(230, 126, 34), sf::Color(155, 89, 182), sf::Color(52, 73, 94)};
+    for(int i=0; i<4; i++) {
+        btnCat[i].setSize(sf::Vector2f(250, 55));
+        btnCat[i].setPosition(100, 200 + (i * 75));
+        btnCat[i].setFillColor(catColors[i]);
+    }
+
+    sf::RectangleShape btnTime[3];
+    string timeLabels[] = {"60s", "90s", "120s"};
+    float times[] = {60, 90, 120};
+    for(int i=0; i<3; i++) {
+        btnTime[i].setSize(sf::Vector2f(120, 50));
+        btnTime[i].setPosition(165, 250 + (i * 80));
+        btnTime[i].setFillColor(sf::Color(52, 152, 219));
+    }
 
     vector<sf::RectangleShape> boxes;
     for (int i = 0; i < 30; i++) {
@@ -69,7 +82,6 @@ int main() {
         box.setFillColor(sf::Color::White);
         box.setOutlineThickness(2);
         box.setOutlineColor(sf::Color(200, 200, 200));
-        // ขยับจุดเริ่มตารางขึ้นไปที่พิกัด y = 90
         box.setPosition(50.f + (i % 5) * 70, 90.f + (i / 5) * 70);
         boxes.push_back(box);
     }
@@ -83,28 +95,33 @@ int main() {
                 sf::Vector2f mousePos(event.mouseButton.x, event.mouseButton.y);
                 
                 if (menuState == 0) {
-                    if (btnPlay.getGlobalBounds().contains(mousePos)) {
-                        challengeMode = false; menuState = 2; gameClock.restart();
+                    if (btnPlay.getGlobalBounds().contains(mousePos)) { challengeMode = false; menuState = 1; }
+                    if (btnChallenge.getGlobalBounds().contains(mousePos)) { challengeMode = true; menuState = 1; }
+                } 
+                else if (menuState == 1) {
+                    string files[] = {"animals.txt", "food.txt", "items.txt", "word.txt"};
+                    for(int i=0; i<4; i++) {
+                        if (btnCat[i].getGlobalBounds().contains(mousePos)) {
+                            dictionary = loadDictionary(files[i]);
+                            targetWord = getRandomWord(dictionary);
+                            if (challengeMode) menuState = 2; else { menuState = 3; gameClock.restart(); }
+                        }
                     }
-                    if (btnChallenge.getGlobalBounds().contains(mousePos)) {
-                        menuState = 1;
+                }
+                else if (menuState == 2) {
+                    for(int i=0; i<3; i++) {
+                        if (btnTime[i].getGlobalBounds().contains(mousePos)) {
+                            timeLimit = times[i]; menuState = 3; gameClock.restart();
+                        }
                     }
-                } else if (menuState == 1) {
-                    if (btn60.getGlobalBounds().contains(mousePos)) { timeLimit = 60; challengeMode = true; menuState = 2; gameClock.restart(); }
-                    if (btn90.getGlobalBounds().contains(mousePos)) { timeLimit = 90; challengeMode = true; menuState = 2; gameClock.restart(); }
-                    if (btn120.getGlobalBounds().contains(mousePos)) { timeLimit = 120; challengeMode = true; menuState = 2; gameClock.restart(); }
                 }
             }
 
-            if (menuState == 2 && !gameOver && event.type == sf::Event::TextEntered) {
+            if (menuState == 3 && !gameOver && event.type == sf::Event::TextEntered) {
                 if (event.text.unicode < 128) {
                     char entered = static_cast<char>(event.text.unicode);
-                    if (entered == 8 && !currentGuess.empty()) {
-                        currentGuess.pop_back(); invalidWord = false;
-                    }
-                    else if (isalpha(entered) && currentGuess.length() < 5) {
-                        currentGuess += toupper(entered);
-                    }
+                    if (entered == 8 && !currentGuess.empty()) { currentGuess.pop_back(); invalidWord = false; }
+                    else if (isalpha(entered) && currentGuess.length() < 5) { currentGuess += toupper(entered); }
                     else if (entered == 13 && currentGuess.length() == 5) {
                         if (find(dictionary.begin(), dictionary.end(), currentGuess) != dictionary.end()) {
                             for (int i = 0; i < 5; i++) {
@@ -119,34 +136,49 @@ int main() {
                         } else { invalidWord = true; }
                     }
                 }
-            } else if (gameOver && event.type == sf::Event::KeyPressed) {
-                if (event.key.code == sf::Keyboard::Space) {
-                    targetWord = getRandomWord(dictionary);
-                    guesses.clear(); currentGuess = ""; currentRow = 0;
-                    gameOver = false; invalidWord = false; menuState = 0; challengeMode = false;
-                    for (auto& b : boxes) b.setFillColor(sf::Color::White);
-                }
+            } else if (gameOver && event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
+                guesses.clear(); currentGuess = ""; currentRow = 0;
+                gameOver = false; invalidWord = false; menuState = 0; 
+                for (auto& b : boxes) b.setFillColor(sf::Color::White);
             }
         }
 
         window.clear(sf::Color(240, 240, 240));
 
         if (menuState == 0) {
-            sf::Text title("WORDLE", font, 50);
-            title.setFillColor(sf::Color::Black); title.setPosition(110, 80);
-            window.draw(title);
+            sf::Text title("WORDLE", font, 60);
+            title.setFillColor(sf::Color::Black); 
+            sf::FloatRect tb = title.getLocalBounds(); title.setOrigin(tb.width/2, tb.height/2);
+            title.setPosition(225, 120); window.draw(title);
             window.draw(btnPlay); window.draw(btnChallenge);
-            sf::Text tP("PLAY", font, 25); tP.setPosition(190, 212); window.draw(tP);
-            sf::Text tC("CHALLENGE", font, 25); tC.setPosition(145, 312); window.draw(tC);
-        } else if (menuState == 1) {
-            sf::Text sub("Select Time Limit", font, 30);
-            sub.setFillColor(sf::Color::Black); sub.setPosition(90, 150);
-            window.draw(sub);
-            window.draw(btn60); window.draw(btn90); window.draw(btn120);
-            sf::Text t60("60s", font, 20); t60.setPosition(205, 260); window.draw(t60);
-            sf::Text t90("90s", font, 20); t90.setPosition(205, 340); window.draw(t90);
-            sf::Text t120("120s", font, 20); t120.setPosition(200, 420); window.draw(t120);
-        } else {
+            sf::Text tP("PLAY", font, 25); tP.setPosition(190, 262); window.draw(tP);
+            sf::Text tC("CHALLENGE", font, 25); tC.setPosition(145, 362); window.draw(tC);
+        } 
+        else if (menuState == 1) {
+            sf::Text sub("Select Category", font, 35);
+            sub.setFillColor(sf::Color::Black); 
+            sf::FloatRect sb = sub.getLocalBounds(); sub.setOrigin(sb.width/2, sb.height/2);
+            sub.setPosition(225, 120); window.draw(sub);
+            for(int i=0; i<4; i++) {
+                window.draw(btnCat[i]);
+                sf::Text t(catNames[i], font, 22);
+                sf::FloatRect tb = t.getLocalBounds(); t.setOrigin(tb.width/2, tb.height/2);
+                t.setPosition(225, 225 + (i * 75)); window.draw(t);
+            }
+        }
+        else if (menuState == 2) {
+            sf::Text sub("Select Time", font, 35);
+            sub.setFillColor(sf::Color::Black); 
+            sf::FloatRect sb = sub.getLocalBounds(); sub.setOrigin(sb.width/2, sb.height/2);
+            sub.setPosition(225, 150); window.draw(sub);
+            for(int i=0; i<3; i++) {
+                window.draw(btnTime[i]);
+                sf::Text t(timeLabels[i], font, 22);
+                sf::FloatRect tb = t.getLocalBounds(); t.setOrigin(tb.width/2, tb.height/2);
+                t.setPosition(225, 272 + (i * 80)); window.draw(t);
+            }
+        }
+        else {
             float timeLeft = timeLimit - gameClock.getElapsedTime().asSeconds();
             if (challengeMode && !gameOver) {
                 if (timeLeft <= 0) { gameOver = true; timeLeft = 0; }
@@ -183,24 +215,18 @@ int main() {
 
                 sf::Text res(result, font, 45);
                 res.setFillColor(result == "YOU WIN!" ? sf::Color(46, 204, 113) : sf::Color::Red);
-                sf::FloatRect resBounds = res.getLocalBounds();
-                res.setOrigin(resBounds.left + resBounds.width / 2.0f, resBounds.top + resBounds.height / 2.0f);
-                res.setPosition(window.getSize().x / 2.0f, 550); // เลื่อนลงมาที่ 550
-                window.draw(res);
+                sf::FloatRect rb = res.getLocalBounds(); res.setOrigin(rb.left + rb.width/2.0f, rb.top + rb.height/2.0f);
+                res.setPosition(225, 550); window.draw(res);
 
                 sf::Text ans("Answer: " + targetWord, font, 22);
                 ans.setFillColor(sf::Color::Blue);
-                sf::FloatRect ansBounds = ans.getLocalBounds();
-                ans.setOrigin(ansBounds.left + ansBounds.width / 2.0f, ansBounds.top + ansBounds.height / 2.0f);
-                ans.setPosition(window.getSize().x / 2.0f, 610);
-                window.draw(ans);
+                sf::FloatRect ab = ans.getLocalBounds(); ans.setOrigin(ab.left + ab.width/2.0f, ab.top + ab.height/2.0f);
+                ans.setPosition(225, 610); window.draw(ans);
 
                 sf::Text msg("Press SPACE to Menu", font, 18);
                 msg.setFillColor(sf::Color::Black);
-                sf::FloatRect msgBounds = msg.getLocalBounds();
-                msg.setOrigin(msgBounds.left + msgBounds.width / 2.0f, msgBounds.top + msgBounds.height / 2.0f);
-                msg.setPosition(window.getSize().x / 2.0f, 660);
-                window.draw(msg);
+                sf::FloatRect mb = msg.getLocalBounds(); msg.setOrigin(mb.left + mb.width/2.0f, mb.top + mb.height/2.0f);
+                msg.setPosition(225, 660); window.draw(msg);
             }
         }
         window.display();
